@@ -329,18 +329,29 @@ export function DecisionTab() {
                           className={cn(
                             "border-l border-neutral-200 p-0",
                             dividerLeft && "border-l-4 border-l-neutral-300",
-                            showElim && "bg-neutral-100 opacity-50",
-                            showPicked && "bg-emerald-50",
-                            pending && !showElim && "bg-amber-50/50"
+                            showElim && "opacity-50"
                           )}
                         >
                           <button
                             onClick={() => setScore(c.id, sol.id, NEXT_VALUE[v])}
                             className={cn(
-                              "h-12 w-full text-center font-mono text-xl",
-                              v === "yes" && "text-emerald-700",
-                              v === "no" && "text-red-700",
-                              v === "unknown" && (pending ? "text-amber-700" : "text-neutral-400")
+                              "h-12 w-full text-center font-mono text-xl transition-colors",
+                              // Value-based cell background + text colour.
+                              v === "yes" && "bg-emerald-100 text-emerald-800 hover:bg-emerald-200",
+                              v === "no" && "bg-red-100 text-red-800 hover:bg-red-200",
+                              v === "unknown" &&
+                                pending &&
+                                "bg-amber-100 text-amber-800 hover:bg-amber-200",
+                              v === "unknown" &&
+                                !pending &&
+                                showPicked &&
+                                "bg-emerald-50 text-neutral-400 hover:bg-emerald-100",
+                              v === "unknown" &&
+                                !pending &&
+                                !showPicked &&
+                                "text-neutral-400 hover:bg-neutral-100",
+                              // Eliminated column dominates with a flat neutral tint.
+                              showElim && "!bg-neutral-100"
                             )}
                             title={
                               pending
@@ -520,10 +531,10 @@ function CardsView({
                       onClick={() => onSetScore(c.id, sol.id, NEXT_VALUE[v])}
                       className={cn(
                         "rounded px-2 py-0.5 font-mono text-base",
-                        v === "yes" && "bg-emerald-50 text-emerald-700",
-                        v === "no" && "bg-red-50 text-red-700",
+                        v === "yes" && "bg-emerald-100 text-emerald-800",
+                        v === "no" && "bg-red-100 text-red-800",
                         v === "unknown" &&
-                          (pending ? "bg-amber-50 text-amber-700" : "text-neutral-400")
+                          (pending ? "bg-amber-100 text-amber-800" : "text-neutral-400")
                       )}
                     >
                       {VALUE_GLYPH[v]}

@@ -1,0 +1,41 @@
+# GitHub Pages config. Serves README.md as the site index, plus llms.txt and
+# anything under docs/. Everything else (source code, tests, prototype, build
+# artifacts) is excluded — Pages doesn't need to know about it.
+
+title: decision
+description: Tauri desktop app for facilitating structured team decisions.
+theme: jekyll-theme-minimal
+markdown: kramdown
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: true
+include:
+  - llms.txt
+exclude:
+  - .github/
+  - .prettierignore
+  - .prettierrc.json
+  - CLAUDE.md
+  - components.json
+  - design/
+  - dist/
+  - e2e/
+  - eslint.config.js
+  - index.html
+  - node_modules/
+  - package-lock.json
+  - package.json
+  - playwright-report/
+  - playwright.config.ts
+  - prototype/
+  - shared/
+  - src-tauri/
+  - src/
+  - test-results/
+  - tsconfig.app.json
+  - tsconfig.json
+  - tsconfig.node.json
+  - vite.config.ts
+  - vitest.config.ts

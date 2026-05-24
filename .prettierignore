@@ -1,0 +1,13 @@
+node_modules
+dist
+build
+prototype
+design
+docs
+src-tauri/target
+src-tauri/Cargo.lock
+src/routeTree.gen.ts
+test-results
+playwright-report
+*.md
+package-lock.json

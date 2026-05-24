@@ -1,0 +1,122 @@
+// Session → canonical markdown.
+// Regenerate-from-model strategy per docs/spec.md §7.
+
+import matter from "gray-matter";
+import { markdownTable } from "markdown-table";
+import type { Session } from "@shared/types/session";
+import { layoutDirectiveString } from "./layout";
+
+const VALUE_GLYPH: Record<string, string> = { yes: "✓", no: "✗", unknown: "?" };
+
+function buildFrontmatter(s: Session): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    schema: s.meta.schema,
+    slug: s.meta.slug,
+    title: s.meta.title,
+    status: s.meta.status,
+    created: s.meta.created,
+    updated: new Date().toISOString(),
+  };
+  if (s.pickedSolution) out.picked = s.pickedSolution;
+  return out;
+}
+
+function buildPresentation(s: Session): string {
+  const parts: string[] = ["# Presentation"];
+  for (const slide of s.slides) {
+    parts.push("", `## ${slide.title}`);
+    if (slide.layout) parts.push(layoutDirectiveString(slide.layout));
+    const body = slide.body.trim();
+    if (body) parts.push("", body);
+  }
+  parts.push("", "## Solutions");
+  if (s.solutions.length === 0) {
+    parts.push("");
+  } else {
+    for (const sol of s.solutions) {
+      parts.push("", `### ${sol.name}`);
+      if (sol.layout) parts.push(layoutDirectiveString(sol.layout));
+      const body = sol.description.trim();
+      if (body) parts.push("", body);
+      if (sol.pros.length) {
+        parts.push("", "**Pros**", "");
+        for (const p of sol.pros) parts.push(`- ${p}`);
+      }
+      if (sol.cons.length) {
+        parts.push("", "**Cons**", "");
+        for (const c of sol.cons) parts.push(`- ${c}`);
+      }
+    }
+  }
+  return parts.join("\n");
+}
+
+function buildDecision(s: Session): string {
+  const parts: string[] = ["# Decision", "", "## Criteria", ""];
+
+  // Criteria: contested rows last; otherwise declaration order.
+  const sortedCriteria = [...s.criteria].sort((a, b) =>
+    a.contested === b.contested ? 0 : a.contested ? 1 : -1
+  );
+  const criteriaRows: string[][] = [
+    ["ID", "Name", "Type", "Contested"],
+    ...sortedCriteria.map((c) => [c.id, c.name, c.type, c.contested ? "yes" : ""]),
+  ];
+  parts.push(markdownTable(criteriaRows));
+
+  parts.push("", "## Scores", "");
+  if (sortedCriteria.length === 0 || s.solutions.length === 0) {
+    // Emit an empty table skeleton so the file remains parseable.
+    parts.push(markdownTable([["", ...s.solutions.map((sol) => sol.name)]]));
+  } else {
+    const scoreByKey = new Map(
+      s.scores.map((sc) => [`${sc.criterionId}:${sc.solutionId}`, sc.value])
+    );
+    const header = ["", ...s.solutions.map((sol) => sol.name)];
+    const rows = sortedCriteria.map((c) => [
+      `${c.id}: ${c.name}`,
+      ...s.solutions.map((sol) => VALUE_GLYPH[scoreByKey.get(`${c.id}:${sol.id}`) ?? "unknown"]),
+    ]);
+    parts.push(markdownTable([header, ...rows]));
+  }
+
+  parts.push("", "## Decision", "", s.decision.trim() || "");
+
+  parts.push("", "## History", "");
+  if (s.history.length === 0) {
+    parts.push(`- ${new Date().toISOString()} — Created session`);
+  } else {
+    for (const h of s.history) {
+      parts.push(`- ${h.timestamp} — ${h.message}`);
+    }
+  }
+
+  return parts.join("\n");
+}
+
+export function serializeSession(s: Session): string {
+  const body = `${buildPresentation(s)}\n\n${buildDecision(s)}\n`;
+  return matter.stringify(body, buildFrontmatter(s));
+}
+
+export function blankTemplate(slug: string, title?: string): string {
+  const now = new Date().toISOString();
+  const session: Session = {
+    meta: {
+      schema: "decision/v1",
+      slug,
+      title: title ?? "Untitled decision",
+      status: "draft",
+      created: now,
+      updated: now,
+    },
+    slides: [{ id: "slide-problem-0", title: "Problem", body: "" }],
+    solutions: [],
+    criteria: [],
+    scores: [],
+    decision: "",
+    history: [{ timestamp: now, message: "Created session" }],
+    diagnostics: [],
+  };
+  return serializeSession(session);
+}

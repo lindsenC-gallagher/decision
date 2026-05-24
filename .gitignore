@@ -1,0 +1,28 @@
+node_modules
+dist
+build
+*.local
+.env
+.env.local
+.DS_Store
+*.log
+
+# Tauri build artifacts
+src-tauri/target
+src-tauri/gen
+
+# Test outputs
+test-results
+playwright-report
+
+# TS incremental build info
+*.tsbuildinfo
+
+# Generated route tree
+src/routeTree.gen.ts
+
+# editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+Thumbs.db

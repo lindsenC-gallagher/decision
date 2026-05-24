@@ -92,7 +92,15 @@ export function PresentationTab() {
   const current = deck[Math.min(idx, deck.length - 1)];
 
   return (
-    <div className={cn("grid h-full", presenting ? "grid-cols-1" : "grid-cols-[280px_1fr]")}>
+    // grid-rows-[1fr] pins the row to the available height so a tall solution
+    // body can't push the prev/next footer off-screen — ScaledSlide will shrink
+    // the content instead.
+    <div
+      className={cn(
+        "grid h-full grid-rows-[1fr]",
+        presenting ? "grid-cols-1" : "grid-cols-[280px_1fr]"
+      )}
+    >
       {!presenting && (
         <aside className="flex flex-col border-r border-neutral-200 bg-white">
           <div className="border-b border-neutral-200 px-4 py-3">
@@ -155,8 +163,8 @@ export function PresentationTab() {
           </div>
         </aside>
       )}
-      <section className="relative flex flex-col bg-neutral-50">
-        <div className="flex-1 overflow-hidden">
+      <section className="relative flex min-h-0 flex-col bg-neutral-50">
+        <div className="min-h-0 flex-1 overflow-hidden">
           {current.kind === "slide"
             ? (() => {
                 const sl = session.slides.find((x) => x.id === current.id);

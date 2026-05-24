@@ -18,11 +18,17 @@ export function Markdown({ md, baseDir }: { md: string; baseDir?: string }) {
   // content, so it's safe to start big here.
   return (
     <div
-      // Sizes chosen to match PowerPoint defaults at slide-display zoom:
-      //   body 32px ≈ 24pt, code 32px ≈ 24pt (body-equivalent for legibility),
-      //   inline code 27px, prose's em-scaled h1=72px / h2=48px / h3=40px.
-      className="prose prose-neutral max-w-none [&_pre]:text-[1em] [&_code]:text-[0.85em] [&_pre]:leading-snug [&_pre]:my-3 [&_pre]:py-3"
-      style={{ fontSize: "2rem" }}
+      // Presentation-scaled, code-emphasised. Code blocks sit *above* body
+      // prose so a technical slide (e.g. the SQL on the Current state slide)
+      // reads as the focal element while supporting paragraphs feel like
+      // context. Inline code stays close to body so it doesn't dominate
+      // mid-sentence.
+      //   body 28px (1.75rem)
+      //   pre  35px (1.25em of body)  ← larger than body for emphasis
+      //   inline code 24px (0.85em of body)
+      //   prose's em-scaled h1≈63px / h2≈42px / h3≈35px (inside body)
+      className="prose prose-neutral max-w-none [&_pre]:text-[1.25em] [&_code]:text-[0.85em] [&_pre]:leading-snug [&_pre]:my-3 [&_pre]:py-3"
+      style={{ fontSize: "1.75rem" }}
     >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}

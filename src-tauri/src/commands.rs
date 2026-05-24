@@ -6,7 +6,7 @@ use crate::watcher;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, State};
 
 #[derive(thiserror::Error, Debug)]
@@ -55,7 +55,7 @@ fn hash(s: &str) -> String {
     hex::encode(h.finalize())
 }
 
-fn slug_to_path(dir: &PathBuf, slug: &str) -> PathBuf {
+fn slug_to_path(dir: &Path, slug: &str) -> PathBuf {
     dir.join(format!("{slug}.md"))
 }
 
@@ -150,7 +150,11 @@ pub fn get_decisions_dir(state: State<AppState>) -> Result<String, CmdError> {
 }
 
 #[tauri::command]
-pub fn set_decisions_dir(app: AppHandle, path: String, state: State<AppState>) -> Result<(), CmdError> {
+pub fn set_decisions_dir(
+    app: AppHandle,
+    path: String,
+    state: State<AppState>,
+) -> Result<(), CmdError> {
     let p = PathBuf::from(&path);
     if !p.exists() {
         fs::create_dir_all(&p)?;

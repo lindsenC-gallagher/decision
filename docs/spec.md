@@ -113,7 +113,7 @@ A **Session** represents one decision being made.
 | `maxScore` | total count of `Preferred` criteria |
 | `unknownCount(s)` | count of `Preferred` cells for solution `s` with value `unknown` |
 | `isScoringComplete` | no surviving solution has any `unknown` cell |
-| `recommendation` | the surviving solution with the highest `score(s)`; tie-break by original order |
+| `recommendation` | a tagged union: `{ kind: "winner", id, score, maxScore }` when exactly one surviving solution has the highest score; `{ kind: "tie", ids, score, maxScore }` when two or more survivors share the top score (no algorithmic winner — the team decides); `{ kind: "none" }` when no solution survives |
 
 ## 7. File format specification (`decisions/<slug>.md`)
 

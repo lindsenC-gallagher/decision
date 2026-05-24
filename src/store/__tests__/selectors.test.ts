@@ -86,27 +86,29 @@ describe("solutionScore", () => {
 });
 
 describe("recommendation", () => {
-  it("returns the highest-scoring survivor", () => {
+  it("returns kind=winner with the highest-scoring survivor", () => {
     const s = session();
     const r = recommendation(s);
-    expect(r?.id).toBe("A");
-    expect(r?.score).toBe(2);
+    expect(r.kind).toBe("winner");
+    if (r.kind === "winner") {
+      expect(r.id).toBe("A");
+      expect(r.score).toBe(2);
+    }
   });
 
-  it("returns null when nothing survives", () => {
+  it("returns kind=none when nothing survives", () => {
     const s = session();
-    // Eliminate everyone
     s.scores = [
       { criterionId: "R1", solutionId: "A", value: "no" },
       { criterionId: "R1", solutionId: "B", value: "no" },
       { criterionId: "R1", solutionId: "C", value: "no" },
     ];
-    expect(recommendation(s)).toBeNull();
+    expect(recommendation(s).kind).toBe("none");
   });
 
-  it("breaks ties by declaration order", () => {
+  it("returns kind=tie when leaders are tied — no algorithmic winner", () => {
     const s = session();
-    // Both A and C survive and have 2/2 → A (declared first) wins.
+    // Both A and C survive and have 2/2 → tie, not a winner.
     s.scores = [
       { criterionId: "R1", solutionId: "A", value: "yes" },
       { criterionId: "R1", solutionId: "C", value: "yes" },
@@ -116,7 +118,12 @@ describe("recommendation", () => {
       { criterionId: "P2", solutionId: "C", value: "yes" },
       { criterionId: "R1", solutionId: "B", value: "no" },
     ];
-    expect(recommendation(s)?.id).toBe("A");
+    const r = recommendation(s);
+    expect(r.kind).toBe("tie");
+    if (r.kind === "tie") {
+      expect(r.ids.sort()).toEqual(["A", "C"]);
+      expect(r.score).toBe(2);
+    }
   });
 });
 

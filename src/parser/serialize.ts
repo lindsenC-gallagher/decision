@@ -55,9 +55,13 @@ function buildDecision(s: Session): string {
   const parts: string[] = ["# Decision", "", "## Criteria", ""];
 
   // Criteria: contested rows last; otherwise declaration order.
-  const sortedCriteria = [...s.criteria].sort((a, b) =>
-    a.contested === b.contested ? 0 : a.contested ? 1 : -1
-  );
+  // Canonical order: Required (not contested) → Preferred (not contested) →
+  // Contested (any type). Stable within each bucket.
+  const sortedCriteria = [...s.criteria].sort((a, b) => {
+    if (a.contested !== b.contested) return a.contested ? 1 : -1;
+    if (a.type !== b.type) return a.type === "Required" ? -1 : 1;
+    return 0;
+  });
   const criteriaRows: string[][] = [
     ["ID", "Name", "Type", "Contested"],
     ...sortedCriteria.map((c) => [c.id, c.name, c.type, c.contested ? "yes" : ""]),

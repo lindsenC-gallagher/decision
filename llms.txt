@@ -1,0 +1,61 @@
+# decision
+
+> Tauri desktop app for facilitating structured team decisions in meetings.
+> Two tabs (Presentation = markdown-driven slide deck, Decision = criteria ×
+> solutions scoring matrix). Sessions persist as a single `.md` file in a
+> user-chosen folder.
+
+Each decision session is one `.md` file with a fixed schema (frontmatter +
+`# Presentation` + `# Decision`). The renderer parses/serializes the file
+client-side via `unified` + `remark-*`; the Rust core handles file IO,
+atomic writes, a `notify`-based watcher, and SHA-256 echo suppression.
+
+## Read these first (in order)
+
+- [README.md](README.md): user-facing overview + the full markdown schema with examples.
+- [CLAUDE.md](CLAUDE.md): coding agent conventions for this repo, including the spec-sync rule.
+- [docs/spec.md](docs/spec.md): canonical specification — domain model, FRs, NFRs, ACs, schema.
+
+## Domain model + parser
+
+- [shared/types/session.ts](shared/types/session.ts): typed model (`Session`, `Solution`, `Criterion`, `ScoreCell`, `PresentationSlide`, `SlideLayout`).
+- [src/parser/parse.ts](src/parser/parse.ts): markdown → `Session`. Recognises only known section headers; user-typed `#`/`###` in body content is preserved as content.
+- [src/parser/serialize.ts](src/parser/serialize.ts): `Session` → canonical markdown. Sorts criteria as Required → Preferred → Contested.
+- [src/parser/prosCons.ts](src/parser/prosCons.ts): split/combine `**Pros**` / `**Cons**` blocks (shared by parser + slide editor).
+- [src/parser/layout.ts](src/parser/layout.ts): per-slide layout directive (`<!-- slide: layout=... -->`) parsing + auto-selection.
+- [src/parser/diff.ts](src/parser/diff.ts): produce History entries by diffing two sessions (Decision-side scope only).
+
+## Renderer (React + Vite + Tailwind v4 + TanStack Router/Query + Zustand)
+
+- [src/lib/sessions.ts](src/lib/sessions.ts): typed `invoke()` / `listen()` wrappers — the single seam between React and the Rust core.
+- [src/store/useDecisionStore.ts](src/store/useDecisionStore.ts): Zustand store + selectors (`solutionScore`, `isSolutionEliminated`, `recommendation` returns `winner` / `tie` / `none`).
+- [src/components/AppShell.tsx](src/components/AppShell.tsx): header, tabs, conflict banner, Present-mode toggle.
+- [src/components/presentation/PresentationTab.tsx](src/components/presentation/PresentationTab.tsx): left-side outline, deck of slides + solutions, hover-delete.
+- [src/components/presentation/SlideRenderer.tsx](src/components/presentation/SlideRenderer.tsx): per-slide layouts, edit toolbar, click-to-edit, image insertion.
+- [src/components/presentation/ScaledSlide.tsx](src/components/presentation/ScaledSlide.tsx): auto-scale via CSS `zoom` (no scroll, crisp at any size).
+- [src/components/decision/DecisionTab.tsx](src/components/decision/DecisionTab.tsx): Criteria editor, Scoring matrix (Table↔Cards toggle), explicit "Pick" button per solution column, tie/winner banner, Decision summary textarea.
+- [src/components/md/Markdown.tsx](src/components/md/Markdown.tsx): `react-markdown` wrapper with Shiki code highlighting + Mermaid + Tauri `asset:` image resolution.
+
+## Tauri (Rust core)
+
+- [src-tauri/src/commands.rs](src-tauri/src/commands.rs): all `#[tauri::command]` functions — `list_sessions` / `load_session` / `save_session` (with base-hash optimistic concurrency + atomic write) / `pick_decisions_dir` / `set_decisions_dir` / `start_watching` / `stop_watching` / `import_image`.
+- [src-tauri/src/watcher.rs](src-tauri/src/watcher.rs): `notify-debouncer-full` watcher emitting `decisions://changed`; checks self-write hashes to suppress echo events.
+- [src-tauri/src/state.rs](src-tauri/src/state.rs): process state — current decisions folder, recent self-write hashes, watcher handle.
+- [src-tauri/src/settings.rs](src-tauri/src/settings.rs): persists user's decisions folder choice to `$APPCONFIG/decision/settings.json`.
+- [src-tauri/tauri.conf.json](src-tauri/tauri.conf.json): window config, bundle identifier, asset protocol scope.
+- [src-tauri/capabilities/default.json](src-tauri/capabilities/default.json): Tauri 2 capability allowlist.
+
+## Tests
+
+- [src/parser/__tests__/](src/parser/__tests__/): parse / serialize / diff / layout / prosCons / round-trip invariants.
+- [src/store/__tests__/](src/store/__tests__/): selectors + mutators (full store action coverage).
+- [e2e/smoke.spec.ts](e2e/smoke.spec.ts): Playwright against Vite dev server with an injected Tauri-stub ([e2e/fixtures.ts](e2e/fixtures.ts)).
+
+Run: `npm run test` (Vitest), `npm run test:e2e` (Playwright after `npm run test:e2e:install` once), `cargo check` inside `src-tauri/`.
+
+## Optional
+
+- [docs/spec.md](docs/spec.md): authoritative spec — every FR, NFR, AC, Q.
+- [prototype/](prototype/): the original Claude-Design HTML prototype, preserved as visual reference. Not used at runtime.
+- [design/](design/): the original handoff bundle, preserved read-only.
+- [.github/workflows/ci.yml](.github/workflows/ci.yml): GitHub Actions — TypeScript build + ESLint + Prettier + Vitest + Playwright + cargo fmt/clippy/check.

@@ -33,12 +33,16 @@ test.describe("decision app", () => {
     await page.goto("/sessions/framework-choice");
     await page.locator("nav button[aria-selected]").filter({ hasText: "Decision" }).click();
 
-    // Before reveal: footer placeholder visible, banner hidden.
-    await expect(page.getByText(/results hidden — press Reveal/)).toBeVisible();
+    // Before reveal: no Recommendation banner; Score footer row not in the matrix.
     await expect(page.getByText("Recommendation:")).toBeHidden();
+    await expect(
+      page.locator("table tfoot, table tbody tr").getByText("Score", { exact: true })
+    ).toBeHidden();
 
+    // Reveal button now lives in the Scoring section header.
     await page.getByRole("button", { name: "Reveal results" }).click();
-    // After reveal: the Score footer row appears (its first cell carries text "Score").
+
+    // After reveal: the Score footer row appears.
     await expect(
       page.locator("table tfoot, table tbody tr").getByText("Score", { exact: true })
     ).toBeVisible();

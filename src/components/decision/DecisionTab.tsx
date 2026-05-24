@@ -37,9 +37,13 @@ export function DecisionTab() {
 
   if (!session) return null;
 
-  const sortedCriteria = [...session.criteria].sort((a, b) =>
-    a.contested === b.contested ? 0 : a.contested ? 1 : -1
-  );
+  // Sort order: Required (not contested) → Preferred (not contested) → Contested.
+  // Stable within each bucket so declaration order is preserved.
+  const sortedCriteria = [...session.criteria].sort((a, b) => {
+    if (a.contested !== b.contested) return a.contested ? 1 : -1;
+    if (a.type !== b.type) return a.type === "Required" ? -1 : 1;
+    return 0;
+  });
 
   // Solutions order: when revealed, survivors first (by score desc, ties by
   // declaration), then a divider, then eliminated. When hidden, keep
@@ -60,13 +64,35 @@ export function DecisionTab() {
   const survivorBoundary = revealed ? sortedSolutions.findIndex((s) => s._eliminated) : -1;
 
   const rec = revealed && isScoringComplete(session) ? recommendation(session) : null;
+  // The picked column gets green styling whenever revealed and a pick is set —
+  // including in tie cases, where the pick represents the team's tie-break.
+  const effectivePickedId = revealed ? session.pickedSolution : undefined;
+  const nameOf = (id: string) => session.solutions.find((s) => s.id === id)?.name ?? id;
 
   return (
     <div className="h-full overflow-auto px-8 py-6">
-      {rec && (
+      {rec?.kind === "winner" && (
         <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
-          <span className="font-medium">Recommendation:</span>{" "}
-          {session.solutions.find((s) => s.id === rec.id)?.name} ({rec.score}/{rec.maxScore})
+          <span className="font-medium">Recommendation:</span> {nameOf(rec.id)} ({rec.score}/
+          {rec.maxScore})
+        </div>
+      )}
+      {rec?.kind === "tie" && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900">
+          <span className="font-medium">
+            Tie ({rec.score}/{rec.maxScore}):
+          </span>{" "}
+          {rec.ids.map(nameOf).join(", ")}.{" "}
+          {session.pickedSolution ? (
+            <>
+              The team picked <strong>{nameOf(session.pickedSolution)}</strong>{" "}
+              {rec.ids.includes(session.pickedSolution)
+                ? "to break the tie."
+                : "(not one of the tied leaders)."}
+            </>
+          ) : (
+            <>No algorithmic winner — the team decides.</>
+          )}
         </div>
       )}
 
@@ -157,6 +183,17 @@ export function DecisionTab() {
             Scoring · {sortedCriteria.length} criteria × {session.solutions.length} solutions
           </h2>
           <div className="flex items-center gap-2">
+            <button
+              onClick={toggleReveal}
+              className={cn(
+                "rounded-md px-3 py-1 text-sm font-medium",
+                revealed
+                  ? "border border-neutral-300 bg-white hover:bg-neutral-100"
+                  : "bg-neutral-900 text-white hover:bg-neutral-800"
+              )}
+            >
+              {revealed ? "Hide results" : "Reveal results"}
+            </button>
             <div className="flex rounded-md border border-neutral-300 bg-white p-0.5 text-xs">
               <button
                 onClick={() => setLayout("table")}
@@ -200,25 +237,23 @@ export function DecisionTab() {
                   {sortedSolutions.map((sol, colIdx) => {
                     const { eliminated, failingCriteria } = isSolutionEliminated(session, sol.id);
                     const showElim = revealed && eliminated;
-                    const showPicked = revealed && session.pickedSolution === sol.id;
+                    const showPicked = effectivePickedId === sol.id;
                     const dividerLeft =
                       revealed && colIdx === survivorBoundary && survivorBoundary > 0;
                     return (
                       <th
                         key={sol.id}
                         className={cn(
-                          "min-w-[180px] cursor-pointer border-l border-neutral-200 px-3 py-2 text-left align-top",
+                          "min-w-[180px] border-l border-neutral-200 px-3 py-2 text-left align-top",
                           dividerLeft && "border-l-4 border-l-neutral-300",
                           showElim && "bg-neutral-100 opacity-50",
                           showPicked && "bg-emerald-50"
                         )}
-                        onClick={() => pickSolution(sol.id)}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <input
                             value={sol.name}
                             onChange={(e) => renameSolution(sol.id, e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
                             className={cn(
                               "min-w-0 flex-1 bg-transparent font-semibold tracking-tight outline-none focus:underline focus:decoration-neutral-300",
                               showElim && "line-through"
@@ -226,24 +261,34 @@ export function DecisionTab() {
                             spellCheck={false}
                           />
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeSolution(sol.id);
-                            }}
+                            onClick={() => removeSolution(sol.id)}
                             className="text-neutral-400 hover:text-neutral-900"
                             title="Remove solution"
                           >
                             ×
                           </button>
                         </div>
+                        <button
+                          onClick={() => pickSolution(sol.id)}
+                          disabled={showElim}
+                          title={
+                            showPicked
+                              ? "Unpick this solution"
+                              : "Mark this solution as the team's pick"
+                          }
+                          className={cn(
+                            "mt-2 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium",
+                            showPicked
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                              : "border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-100",
+                            showElim && "cursor-not-allowed opacity-50"
+                          )}
+                        >
+                          {showPicked ? "✓ Picked" : "Pick"}
+                        </button>
                         {showElim && (
                           <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-red-700">
                             Eliminated · {failingCriteria.join(", ")}
-                          </div>
-                        )}
-                        {showPicked && !showElim && (
-                          <div className="mt-1 font-mono text-[10px] uppercase tracking-wider text-emerald-700">
-                            Picked
                           </div>
                         )}
                       </th>
@@ -273,7 +318,7 @@ export function DecisionTab() {
                     {sortedSolutions.map((sol, colIdx) => {
                       const { eliminated } = isSolutionEliminated(session, sol.id);
                       const showElim = revealed && eliminated;
-                      const showPicked = revealed && session.pickedSolution === sol.id;
+                      const showPicked = effectivePickedId === sol.id;
                       const dividerLeft =
                         revealed && colIdx === survivorBoundary && survivorBoundary > 0;
                       const v = getScore(session, c.id, sol.id);
@@ -363,6 +408,7 @@ export function DecisionTab() {
             sortedSolutions={sortedSolutions}
             sortedCriteria={sortedCriteria}
             survivorBoundary={survivorBoundary}
+            effectivePickedId={effectivePickedId}
             onRenameSolution={renameSolution}
             onRemoveSolution={removeSolution}
             onPickSolution={pickSolution}
@@ -371,27 +417,11 @@ export function DecisionTab() {
         )}
       </section>
 
-      {/* Decision summary + reveal button */}
+      {/* Decision summary */}
       <section className="mb-6 rounded-lg border border-neutral-200 bg-white p-4">
-        <header className="mb-2 flex items-center justify-between">
+        <header className="mb-2">
           <h2 className="font-mono text-xs uppercase tracking-wider text-neutral-500">Decision</h2>
-          <button
-            onClick={toggleReveal}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm font-medium",
-              revealed
-                ? "border border-neutral-300 bg-white hover:bg-neutral-100"
-                : "bg-neutral-900 text-white hover:bg-neutral-800"
-            )}
-          >
-            {revealed ? "Hide results" : "Reveal results"}
-          </button>
         </header>
-        {!revealed && (
-          <p className="mb-3 rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-3 py-2 text-sm text-neutral-500">
-            — results hidden — press Reveal to view —
-          </p>
-        )}
         <DecisionEditor />
       </section>
     </div>
@@ -407,7 +437,7 @@ function DecisionEditor() {
       value={session.decision}
       onChange={(e) => setDecisionText(e.target.value)}
       placeholder="What did we decide and why?"
-      className="min-h-[120px] w-full rounded-md border border-neutral-300 bg-white p-3 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
+      className="min-h-[560px] w-full resize-y rounded-md border border-neutral-300 bg-white p-4 font-mono text-base leading-relaxed focus:outline-none focus:ring-2 focus:ring-neutral-900"
       spellCheck={false}
     />
   );
@@ -417,6 +447,7 @@ function CardsView({
   sortedSolutions,
   sortedCriteria,
   survivorBoundary,
+  effectivePickedId,
   onRenameSolution,
   onRemoveSolution,
   onPickSolution,
@@ -425,6 +456,7 @@ function CardsView({
   sortedSolutions: Array<Solution & { _eliminated: boolean }>;
   sortedCriteria: Array<import("@shared/types/session").Criterion>;
   survivorBoundary: number;
+  effectivePickedId: string | undefined;
   onRenameSolution: (id: string, name: string) => void;
   onRemoveSolution: (id: string) => void;
   onPickSolution: (id: string) => void;
@@ -437,7 +469,7 @@ function CardsView({
     <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
       {sortedSolutions.map((sol, colIdx) => {
         const showElim = revealed && sol._eliminated;
-        const showPicked = revealed && session.pickedSolution === sol.id;
+        const showPicked = effectivePickedId === sol.id;
         const showDividerHint = revealed && colIdx === survivorBoundary && survivorBoundary > 0;
         const { score, maxScore, unknown } = solutionScore(session, sol.id);
         return (

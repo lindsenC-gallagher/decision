@@ -100,6 +100,27 @@ describe("serializeSession", () => {
     expect(c1).toBeGreaterThan(0);
     expect(c2).toBeGreaterThan(c1);
   });
+
+  it("orders criteria as Required → Preferred → Contested", () => {
+    const md = serializeSession({
+      ...fixture(),
+      criteria: [
+        // Declared in random order, including a contested Required.
+        { id: "C1", name: "Preferred non-contested", type: "Preferred", contested: false },
+        { id: "C2", name: "Required contested", type: "Required", contested: true },
+        { id: "C3", name: "Required non-contested", type: "Required", contested: false },
+        { id: "C4", name: "Preferred contested", type: "Preferred", contested: true },
+      ],
+    });
+    // Pull the IDs in the order they appear in the Criteria table.
+    const ids = ["C1", "C2", "C3", "C4"]
+      .map((id) => ({ id, idx: md.indexOf(`| ${id} |`) }))
+      .sort((a, b) => a.idx - b.idx)
+      .map((x) => x.id);
+    expect(ids).toEqual(["C3", "C1", "C2", "C4"]);
+    // C3 = Required non-contested, C1 = Preferred non-contested,
+    // C2 = Required contested, C4 = Preferred contested.
+  });
 });
 
 describe("parse / serialize round-trip", () => {

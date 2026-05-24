@@ -298,21 +298,27 @@ export function solutionScore(
   return { score, maxScore: preferred.length, unknown };
 }
 
-export function recommendation(
-  session: Session
-): { id: string; score: number; maxScore: number } | null {
+export type Recommendation =
+  | { kind: "winner"; id: string; score: number; maxScore: number }
+  | { kind: "tie"; ids: string[]; score: number; maxScore: number }
+  | { kind: "none" };
+
+export function recommendation(session: Session): Recommendation {
   const survivors = session.solutions.filter(
     (sol) => !isSolutionEliminated(session, sol.id).eliminated
   );
-  if (survivors.length === 0) return null;
+  if (survivors.length === 0) return { kind: "none" };
   const scored = survivors.map((sol) => ({
     id: sol.id,
     ...solutionScore(session, sol.id),
   }));
-  // Tie-break by declaration order (same as `survivors` order).
-  let best = scored[0];
-  for (const s of scored) if (s.score > best.score) best = s;
-  return { id: best.id, score: best.score, maxScore: best.maxScore };
+  const top = Math.max(...scored.map((s) => s.score));
+  const leaders = scored.filter((s) => s.score === top);
+  const maxScore = scored[0].maxScore;
+  // No algorithmic winner when leaders tie — the team decides.
+  if (leaders.length > 1)
+    return { kind: "tie", ids: leaders.map((l) => l.id), score: top, maxScore };
+  return { kind: "winner", id: leaders[0].id, score: top, maxScore };
 }
 
 export function isScoringComplete(session: Session): boolean {

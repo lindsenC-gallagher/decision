@@ -2,9 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { autoLayout } from "@/parser/layout";
+import { combineProsCons } from "@/parser/prosCons";
 import type { SlideLayout } from "@shared/types/session";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/md/Markdown";
+import { ScaledSlide } from "./ScaledSlide";
+import { useDecisionStore } from "@/store/useDecisionStore";
 
 const ALL_LAYOUTS: SlideLayout[] = [
   "title-body",
@@ -24,6 +27,13 @@ interface Props {
   baseDir?: string;
   slug: string;
   onTitleChange?: (s: string) => void;
+  /**
+   * For slides: receives the body markdown.
+   * For solutions: receives the **combined** body (description + Pros + Cons
+   * blocks as typed in the textarea); the caller is responsible for splitting
+   * via `setSolutionFullBody` in the store. The body prop is still the
+   * description-only string used in the preview.
+   */
   onBodyChange: (md: string) => void;
   onLayoutChange?: (l: SlideLayout | undefined) => void;
 }
@@ -41,7 +51,17 @@ export function SlideRenderer({
   onLayoutChange,
 }: Props) {
   const [editing, setEditing] = useState(false);
+  const presenting = useDecisionStore((s) => s.presenting);
   const effectiveLayout = useMemo<SlideLayout>(() => layout ?? autoLayout(body), [layout, body]);
+
+  // For solutions (where pros/cons are tracked separately), the textarea
+  // shows the *combined* body so the user can edit pros/cons inline alongside
+  // the description.
+  const isSolution = pros !== undefined || cons !== undefined;
+  const editingBody = useMemo(
+    () => (isSolution ? combineProsCons(body, pros ?? [], cons ?? []) : body),
+    [isSolution, body, pros, cons]
+  );
 
   const insertImage = async () => {
     const selected = await openDialog({
@@ -61,37 +81,43 @@ export function SlideRenderer({
 
   return (
     <div className="relative h-full">
-      <SlideToolbar
-        editing={editing}
-        layout={effectiveLayout}
-        isExplicit={!!layout}
-        onSetEditing={setEditing}
-        onSetLayout={onLayoutChange}
-        onAddImage={insertImage}
-      />
+      {!presenting && (
+        <SlideToolbar
+          editing={editing}
+          layout={effectiveLayout}
+          isExplicit={!!layout}
+          onSetEditing={setEditing}
+          onSetLayout={onLayoutChange}
+          onAddImage={insertImage}
+        />
+      )}
 
-      <div className="h-full overflow-auto p-12">
-        {editing ? (
+      {editing ? (
+        <div className="h-full overflow-auto p-12">
           <EditorTextarea
-            body={body}
+            body={editingBody}
             onBodyChange={onBodyChange}
             onBlur={() => setEditing(false)}
           />
-        ) : (
-          <SlideBody
-            layout={effectiveLayout}
-            title={title}
-            body={body}
-            bodyWithoutFirstImage={bodyWithoutFirstImage}
-            firstImageSrc={firstImageSrc}
-            pros={pros}
-            cons={cons}
-            baseDir={baseDir}
-            onTitleChange={onTitleChange}
-            onEdit={() => setEditing(true)}
-          />
-        )}
-      </div>
+        </div>
+      ) : (
+        <ScaledSlide>
+          <div className="p-12">
+            <SlideBody
+              layout={effectiveLayout}
+              title={title}
+              body={body}
+              bodyWithoutFirstImage={bodyWithoutFirstImage}
+              firstImageSrc={firstImageSrc}
+              pros={pros}
+              cons={cons}
+              baseDir={baseDir}
+              onTitleChange={onTitleChange}
+              onEdit={() => setEditing(true)}
+            />
+          </div>
+        </ScaledSlide>
+      )}
     </div>
   );
 }
@@ -307,14 +333,16 @@ function SlideBody({
 
 function ProsCons({ pros, cons }: { pros?: string[]; cons?: string[] }) {
   if (!pros?.length && !cons?.length) return null;
+  // Sized to match the body markdown (32px) so the slide reads consistently.
+  // ScaledSlide can still shrink the whole slide if there's too much content.
   return (
-    <div className="mt-6 grid grid-cols-2 gap-6">
+    <div className="mt-8 grid grid-cols-2 gap-8">
       {!!pros?.length && (
         <div>
-          <div className="mb-1 font-mono text-xs uppercase tracking-wider text-emerald-700">
+          <div className="mb-3 font-mono text-xl uppercase tracking-wider text-emerald-700">
             Pros
           </div>
-          <ul className="list-disc space-y-1 pl-5 text-sm">
+          <ul className="list-disc space-y-2 pl-6 text-3xl leading-snug">
             {pros.map((p, i) => (
               <li key={i}>{p}</li>
             ))}
@@ -323,8 +351,8 @@ function ProsCons({ pros, cons }: { pros?: string[]; cons?: string[] }) {
       )}
       {!!cons?.length && (
         <div>
-          <div className="mb-1 font-mono text-xs uppercase tracking-wider text-red-700">Cons</div>
-          <ul className="list-disc space-y-1 pl-5 text-sm">
+          <div className="mb-3 font-mono text-xl uppercase tracking-wider text-red-700">Cons</div>
+          <ul className="list-disc space-y-2 pl-6 text-3xl leading-snug">
             {cons.map((c, i) => (
               <li key={i}>{c}</li>
             ))}

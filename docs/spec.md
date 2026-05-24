@@ -433,8 +433,11 @@ The mermaid source remains the canonical content in the `.md` file — no render
 | FR-dec-17 | When `revealed = false`, the topbar pill reads `results hidden`; the Decision footer shows `— results hidden — press Reveal to view —` in place of the chosen-solution pill. |
 | FR-dec-18 | When `revealed = false`, the card layout's pick button reads `mark as choice` (or `marked (hidden until reveal)` if already picked) instead of `pick as solution` / `✓ chosen solution`. |
 | FR-dec-19 | Toggling Reveal is a display switch only — it does not persist to the `.md` file. The picked solution (`Session.pickedSolution`) and the `contested` flags are the persisted state. |
-| FR-pres-15 | The Presentation tab outline header exposes an `open…` action that triggers a file picker (`.md` / `.markdown` / `text/plain`); on selection, the chosen file's contents replace the in-memory markdown, the displayed filename updates, and slide index resets to 0. |
-| FR-pres-16 | The Presentation tab outline header exposes a `save…` action that downloads the current markdown as a file using the last-opened filename (or `slides.md` if none). |
+| FR-dec-20 | The Scoring matrix has a **Table ↔ Cards** layout toggle in its section header. Table view (default) is criteria-rows × solution-columns; Cards view renders each solution as a card containing its criterion scores vertically. The two views share state — toggling does not lose scores or selections. |
+| FR-pres-15 | The Presentation tab outline sits on the **left edge** (PowerPoint-style), 280px wide. Outline lists slides first, then solutions (tagged `sol`), in deck order. The slide area takes the remaining width. The outline is hidden when `presenting = true`. |
+| FR-pres-16 | The outline footer has `+ Slide` and `+ Solution` actions. New slides default to title `Slide N` and empty body; new solutions default to name `Solution <A/B/C…>`. |
+| FR-pres-17 | Slide content is **auto-scaled** to fit the available area without scrolling. Base font sizes are presentation-large; the renderer applies CSS `zoom` to scale down busy slides or scale up sparse ones. Scale clamps to `[0.35, 1.4]`. Implemented in `src/components/presentation/ScaledSlide.tsx`. The textarea (edit mode) is not scaled and remains scrollable. |
+| FR-pres-18 | The app-shell header includes a **"Present"** button (with `F` keyboard hint) that triggers the same in-app present mode as the `F` shortcut. |
 
 ### 8.4 Persistence and sync
 
@@ -452,6 +455,7 @@ The mermaid source remains the canonical content in the `.md` file — no render
 | FR-sync-10 | When the renderer receives `decisions://changed` while dirty, it stashes the incoming version (re-fetched) and shows a persistent banner: "File changed externally — [View diff] [Keep mine] [Take theirs]". The banner persists until the user chooses. |
 | FR-sync-11 | If the Rust core panics or the watcher stops, the renderer shows a non-blocking error banner. Local edits remain in memory; the next successful `save_session` flushes them. |
 | FR-sync-12 | The user can change the decisions folder at runtime via `pick_decisions_dir` (native folder dialog). After change, the watcher is restarted against the new folder and the session list is refreshed. |
+| FR-sync-13 | The chosen decisions folder **persists across launches** via `$APPCONFIG/decision/settings.json` (managed by `src-tauri/src/settings.rs`). On startup, the saved path is loaded; falls back to `$HOME/decisions/` if missing. Updated on every successful `set_decisions_dir` call. |
 
 ### 8.5 History / audit log
 
@@ -659,6 +663,10 @@ These are the files where the spec's behavior crystallizes; reviewing diffs here
 | `src-tauri/src/state.rs` | Process state (decisions folder, self-write hash set, watcher handle). |
 | `src-tauri/tauri.conf.json` | Window config, bundle identifier, frontend dist path. |
 | `src-tauri/capabilities/default.json` | Allowlist of Tauri permissions (filesystem scope, dialog, events). |
-| `src/store/useDecisionStore.ts` | Zustand store; selectors for survivors, eliminated, scores. |
-| `src/components/decision/ScoringMatrix.tsx` | Tri-state cell grid, elimination logic, keyboard nav. |
-| `src/components/AppShell.tsx` | Header, tabs, conflict banner, toasts. |
+| `src/store/useDecisionStore.ts` | Zustand store; selectors for survivors, eliminated, scores; `presenting` mode flag. |
+| `src/components/decision/DecisionTab.tsx` | Tri-state cell grid, Table↔Cards toggle, elimination logic. |
+| `src/components/presentation/PresentationTab.tsx` | Mini-deck container with left-side outline (PowerPoint-style). |
+| `src/components/presentation/SlideRenderer.tsx` | Per-slide layout switching, edit toolbar, click-to-edit. |
+| `src/components/presentation/ScaledSlide.tsx` | Auto-scaling slide content via CSS `zoom` (no scroll). |
+| `src/components/AppShell.tsx` | Header, tabs, conflict banner, Present button, present-mode chrome hiding. |
+| `src-tauri/src/settings.rs` | Persistent user preferences (decisions folder) at `$APPCONFIG/decision/settings.json`. |

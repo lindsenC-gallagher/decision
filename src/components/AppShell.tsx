@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDecisionStore } from "@/store/useDecisionStore";
 import { PresentationTab } from "@/components/presentation/PresentationTab";
@@ -20,28 +20,60 @@ export function AppShell() {
   const pendingExternal = useDecisionStore((s) => s.pendingExternal);
   const takeExternal = useDecisionStore((s) => s.takeExternal);
   const keepMine = useDecisionStore((s) => s.keepMine);
+  const presenting = useDecisionStore((s) => s.presenting);
+  const setPresenting = useDecisionStore((s) => s.setPresenting);
   const [tab, setTab] = useState<Tab>("presentation");
 
   useKeyboardTabSwitch(setTab);
 
-  // Fullscreen toggle (FR-pres-6) — `F` when no input focused.
+  // Present mode toggle: `F` enters, `Esc` exits. In present mode, header +
+  // tabs (and PresentationTab's outline) are hidden so the slide fills the
+  // window. This is a UI mode, not OS fullscreen.
   useEffect(() => {
-    const onKey = async (e: KeyboardEvent) => {
+    const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
+      const inField =
+        tag === "INPUT" || tag === "TEXTAREA" || !!target?.isContentEditable;
+      if (e.key === "Escape" && presenting) {
+        e.preventDefault();
+        setPresenting(false);
+        return;
+      }
+      if (inField) return;
       if (e.key === "f" || e.key === "F") {
         e.preventDefault();
-        const w = getCurrentWindow();
-        const cur = await w.isFullscreen();
-        await w.setFullscreen(!cur);
+        setPresenting(!presenting);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [presenting, setPresenting]);
+
+  // Force the Presentation tab while presenting (the Decision tab has no
+  // useful "presenter" view).
+  useEffect(() => {
+    if (presenting) setTab("presentation");
+  }, [presenting]);
 
   if (!session) return null;
+
+  if (presenting) {
+    return (
+      <div className="flex h-full flex-col bg-neutral-50 font-sans">
+        <main className="relative flex-1 overflow-hidden">
+          <PresentationTab />
+        </main>
+        <button
+          onClick={() => setPresenting(false)}
+          className="absolute right-4 top-4 z-50 rounded-md border border-neutral-300 bg-white/80 px-2 py-1 font-mono text-xs text-neutral-600 shadow-sm backdrop-blur hover:bg-white"
+          title="Exit present mode (Esc)"
+        >
+          Esc to exit
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col bg-neutral-50 font-sans">
@@ -75,6 +107,17 @@ export function AppShell() {
         >
           {dirty ? "saving…" : "saved"}
         </span>
+        <button
+          onClick={() => setPresenting(true)}
+          title="Enter present mode (F)"
+          className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-2.5 py-1 text-sm hover:bg-neutral-100"
+        >
+          <Maximize2 className="h-4 w-4" />
+          <span>Present</span>
+          <span className="ml-0.5 rounded border border-neutral-200 bg-neutral-50 px-1 py-0 font-mono text-[10px] text-neutral-500">
+            F
+          </span>
+        </button>
       </header>
 
       {pendingExternal && (

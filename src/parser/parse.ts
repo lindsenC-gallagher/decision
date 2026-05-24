@@ -30,29 +30,7 @@ import type {
   ParseDiagnostic,
 } from "@shared/types/session";
 import { extractLayoutDirective } from "./layout";
-
-const PROS_RE = /(?:^|\n)\*\*Pros\*\*\s*\n+([\s\S]*?)(?=\n\s*\*\*(?:Cons|Pros)\*\*|\s*$)/i;
-const CONS_RE = /(?:^|\n)\*\*Cons\*\*\s*\n+([\s\S]*?)(?=\n\s*\*\*(?:Cons|Pros)\*\*|\s*$)/i;
-
-function extractListItems(block: string): string[] {
-  return block
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => /^[-*+]\s/.test(l))
-    .map((l) => l.replace(/^[-*+]\s+/, ""));
-}
-
-function splitProsCons(body: string): { description: string; pros: string[]; cons: string[] } {
-  const pros = body.match(PROS_RE);
-  const cons = body.match(CONS_RE);
-  const prosList = pros ? extractListItems(pros[1]) : [];
-  const consList = cons ? extractListItems(cons[1]) : [];
-  // Strip Pros/Cons blocks from the description.
-  let description = body;
-  if (pros) description = description.replace(PROS_RE, "");
-  if (cons) description = description.replace(CONS_RE, "");
-  return { description: description.trim(), pros: prosList, cons: consList };
-}
+import { splitProsCons } from "./prosCons";
 
 const processor = unified().use(remarkParse).use(remarkGfm);
 

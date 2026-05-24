@@ -12,8 +12,18 @@ import { CodeBlock } from "./CodeBlock";
  *   - HTML disabled (skipHtml) for safety
  */
 export function Markdown({ md, baseDir }: { md: string; baseDir?: string }) {
+  // Presentation-scale base sizes. Body paragraphs land around 36px (twice
+  // a normal doc), headings scale up proportionally via prose's em-based
+  // sizing. `<ScaledSlide>` zooms the whole slide DOWN if there's too much
+  // content, so it's safe to start big here.
   return (
-    <div className="prose prose-neutral max-w-none">
+    <div
+      // Sizes chosen to match PowerPoint defaults at slide-display zoom:
+      //   body 32px ≈ 24pt, code 32px ≈ 24pt (body-equivalent for legibility),
+      //   inline code 27px, prose's em-scaled h1=72px / h2=48px / h3=40px.
+      className="prose prose-neutral max-w-none [&_pre]:text-[1em] [&_code]:text-[0.85em] [&_pre]:leading-snug [&_pre]:my-3 [&_pre]:py-3"
+      style={{ fontSize: "2rem" }}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         skipHtml

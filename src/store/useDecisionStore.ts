@@ -11,6 +11,7 @@ import type {
   ScoreValue,
   SlideLayout,
 } from "@shared/types/session";
+import { splitProsCons } from "@/parser/prosCons";
 
 interface DecisionState {
   slug: string | null;
@@ -20,6 +21,9 @@ interface DecisionState {
   baseHash: string;
   dirty: boolean;
   revealed: boolean;
+  /** In-app present mode: hides header, tabs, and the outline sidebar so the
+   *  slide fills the window. Triggered by `F`, exited by `Esc`. */
+  presenting: boolean;
   /** External edit arrived while dirty: stashed for user choice. */
   pendingExternal: { session: Session; baseHash: string } | null;
 
@@ -27,6 +31,7 @@ interface DecisionState {
   clear: () => void;
   markSaved: (newSession: Session, newHash: string) => void;
   toggleReveal: () => void;
+  setPresenting: (v: boolean) => void;
 
   setExternalPending: (session: Session, baseHash: string) => void;
   takeExternal: () => void;
@@ -47,6 +52,10 @@ interface DecisionState {
   removeSolution: (id: string) => void;
   renameSolution: (id: string, name: string) => void;
   setSolutionDescription: (id: string, md: string) => void;
+  /** Accepts the full solution body (description + `**Pros**` block + `**Cons**` block)
+   *  as typed in the editor; splits and updates `description`, `pros`, `cons`
+   *  together so the slide preview re-renders consistently. */
+  setSolutionFullBody: (id: string, md: string) => void;
   setSolutionLayout: (id: string, layout: SlideLayout | undefined) => void;
   pickSolution: (id: string | undefined) => void;
 
@@ -86,6 +95,7 @@ export const useDecisionStore = create<DecisionState>((set, get) => {
     baseHash: "",
     dirty: false,
     revealed: false,
+    presenting: false,
     pendingExternal: null,
 
     load: (slug, session, baseHash) =>
@@ -96,6 +106,7 @@ export const useDecisionStore = create<DecisionState>((set, get) => {
         baseHash,
         dirty: false,
         revealed: false,
+        presenting: false,
         pendingExternal: null,
       }),
     clear: () =>
@@ -106,6 +117,7 @@ export const useDecisionStore = create<DecisionState>((set, get) => {
         baseHash: "",
         dirty: false,
         revealed: false,
+        presenting: false,
         pendingExternal: null,
       }),
     markSaved: (newSession, newHash) =>
@@ -116,6 +128,7 @@ export const useDecisionStore = create<DecisionState>((set, get) => {
         dirty: false,
       }),
     toggleReveal: () => set((s) => ({ revealed: !s.revealed })),
+    setPresenting: (v) => set({ presenting: v }),
 
     setExternalPending: (session, baseHash) => set({ pendingExternal: { session, baseHash } }),
     takeExternal: () => {
@@ -181,6 +194,15 @@ export const useDecisionStore = create<DecisionState>((set, get) => {
       mut((s) => {
         const sol = s.solutions.find((x) => x.id === id);
         if (sol) sol.description = md;
+      }),
+    setSolutionFullBody: (id, md) =>
+      mut((s) => {
+        const sol = s.solutions.find((x) => x.id === id);
+        if (!sol) return;
+        const split = splitProsCons(md);
+        sol.description = split.description;
+        sol.pros = split.pros;
+        sol.cons = split.cons;
       }),
     setSolutionLayout: (id, layout) =>
       mut((s) => {

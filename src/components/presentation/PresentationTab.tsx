@@ -92,12 +92,7 @@ export function PresentationTab() {
   const current = deck[Math.min(idx, deck.length - 1)];
 
   return (
-    <div
-      className={cn(
-        "grid h-full",
-        presenting ? "grid-cols-1" : "grid-cols-[280px_1fr]"
-      )}
-    >
+    <div className={cn("grid h-full", presenting ? "grid-cols-1" : "grid-cols-[280px_1fr]")}>
       {!presenting && (
         <aside className="flex flex-col border-r border-neutral-200 bg-white">
           <div className="border-b border-neutral-200 px-4 py-3">
@@ -225,7 +220,6 @@ export function PresentationTab() {
           </button>
         </footer>
       </section>
-
     </div>
   );
 }

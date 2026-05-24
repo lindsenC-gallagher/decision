@@ -33,8 +33,7 @@ export function AppShell() {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
-      const inField =
-        tag === "INPUT" || tag === "TEXTAREA" || !!target?.isContentEditable;
+      const inField = tag === "INPUT" || tag === "TEXTAREA" || !!target?.isContentEditable;
       if (e.key === "Escape" && presenting) {
         e.preventDefault();
         setPresenting(false);

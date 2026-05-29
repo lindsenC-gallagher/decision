@@ -150,9 +150,17 @@ function parseMeta(slug: string, fm: Record<string, unknown>): SessionMeta {
     slug: typeof fm.slug === "string" ? fm.slug : slug,
     title: typeof fm.title === "string" ? fm.title : "Untitled decision",
     status,
-    created: typeof fm.created === "string" ? fm.created : now,
-    updated: typeof fm.updated === "string" ? fm.updated : now,
+    // YAML parses unquoted ISO 8601 datetimes (e.g. `created: 2026-05-15T10:00:00Z`)
+    // as native Date objects, so accept both strings and Dates here.
+    created: coerceIsoTimestamp(fm.created) ?? now,
+    updated: coerceIsoTimestamp(fm.updated) ?? now,
   };
+}
+
+function coerceIsoTimestamp(v: unknown): string | null {
+  if (typeof v === "string") return v;
+  if (v instanceof Date && !Number.isNaN(v.getTime())) return v.toISOString();
+  return null;
 }
 
 /**

@@ -206,6 +206,45 @@ function SlideToolbar({
   );
 }
 
+/**
+ * Click-to-edit shell that wraps slide-body content. Implemented as a
+ * `<div role="button">` rather than a `<button>` so the slide body can safely
+ * contain other interactive elements (e.g. the Copy button inside a code
+ * block) without producing nested-button HTML.
+ */
+function EditableArea({
+  onEdit,
+  className,
+  children,
+}: {
+  onEdit: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={(e) => {
+        // Avoid swallowing clicks targeted at nested controls (links, the
+        // Copy button on a code block, etc.).
+        if ((e.target as HTMLElement).closest("button, a, input, textarea")) return;
+        onEdit();
+      }}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onEdit();
+        }
+      }}
+      className={cn("block w-full cursor-text text-left", className)}
+    >
+      {children}
+    </div>
+  );
+}
+
 function SlideBody({
   layout,
   title,
@@ -251,10 +290,10 @@ function SlideBody({
         <PlaceholderPanel hint="Add an image to fill this pane (see + image)." />
       );
       const textPane = (
-        <button onClick={onEdit} className="block w-full cursor-text text-left">
+        <EditableArea onEdit={onEdit}>
           <Markdown md={bodyWithoutFirstImage || body} baseDir={baseDir} />
           <ProsCons pros={pros} cons={cons} />
-        </button>
+        </EditableArea>
       );
       return (
         <div className="mx-auto max-w-6xl">
@@ -275,10 +314,10 @@ function SlideBody({
             </div>
           )}
           <div className="mb-4">{titleEl}</div>
-          <button onClick={onEdit} className="block w-full cursor-text text-left">
+          <EditableArea onEdit={onEdit}>
             <Markdown md={bodyWithoutFirstImage || body} baseDir={baseDir} />
             <ProsCons pros={pros} cons={cons} />
-          </button>
+          </EditableArea>
         </div>
       );
     }
@@ -286,12 +325,12 @@ function SlideBody({
       return (
         <div className="mx-auto max-w-3xl">
           <div className="mb-6">{titleEl}</div>
-          <button onClick={onEdit} className="block w-full cursor-text text-left">
+          <EditableArea onEdit={onEdit}>
             <div className="prose prose-xl prose-neutral max-w-none">
               <Markdown md={body} baseDir={baseDir} />
             </div>
             <ProsCons pros={pros} cons={cons} />
-          </button>
+          </EditableArea>
         </div>
       );
     }
@@ -299,12 +338,12 @@ function SlideBody({
       return (
         <div className="mx-auto flex max-w-3xl flex-col justify-center text-center">
           <div className="mb-8">{titleEl}</div>
-          <button onClick={onEdit} className="block w-full cursor-text text-left">
+          <EditableArea onEdit={onEdit}>
             <div className="prose prose-xl prose-neutral max-w-none italic">
               <Markdown md={body} baseDir={baseDir} />
             </div>
             <ProsCons pros={pros} cons={cons} />
-          </button>
+          </EditableArea>
         </div>
       );
     }
@@ -313,9 +352,9 @@ function SlideBody({
       return (
         <div className="mx-auto max-w-3xl">
           <div className="mb-6">{titleEl}</div>
-          <button
-            onClick={onEdit}
-            className="block w-full cursor-text rounded-md p-2 text-left hover:bg-neutral-100"
+          <EditableArea
+            onEdit={onEdit}
+            className="rounded-md p-2 hover:bg-neutral-100"
           >
             {empty ? (
               <span className="text-neutral-400">Click to add content. Markdown supported.</span>
@@ -325,7 +364,7 @@ function SlideBody({
                 <ProsCons pros={pros} cons={cons} />
               </>
             )}
-          </button>
+          </EditableArea>
         </div>
       );
   }

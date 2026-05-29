@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { useDecisionStore } from "@/store/useDecisionStore";
 import { SlideRenderer } from "./SlideRenderer";
-import { cn } from "@/lib/utils";
+import { cn, pluralize } from "@/lib/utils";
 import { getDecisionsDir } from "@/lib/sessions";
 
 type DeckItem =
@@ -24,6 +24,10 @@ export function PresentationTab() {
   const addSolution = useDecisionStore((s) => s.addSolution);
   const [idx, setIdx] = useState(0);
   const [baseDir, setBaseDir] = useState<string | undefined>(undefined);
+  // Ref to the outer container so the keydown handler can ignore arrow keys
+  // fired while this tab is display:none (e.g. when the Decision tab is shown
+  // but PresentationTab is still mounted).
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void getDecisionsDir()
@@ -49,6 +53,11 @@ export function PresentationTab() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // PresentationTab stays mounted while the Decision tab is showing
+      // (AppShell flips visibility via CSS), so the window-level listener
+      // would otherwise steal arrow keys from the Decision tab. `offsetParent
+      // === null` is true when display:none is in our ancestor chain.
+      if (!rootRef.current || rootRef.current.offsetParent === null) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable) return;
@@ -96,6 +105,7 @@ export function PresentationTab() {
     // body can't push the prev/next footer off-screen — ScaledSlide will shrink
     // the content instead.
     <div
+      ref={rootRef}
       className={cn(
         "grid h-full grid-rows-[1fr]",
         presenting ? "grid-cols-1" : "grid-cols-[280px_1fr]"
@@ -105,7 +115,8 @@ export function PresentationTab() {
         <aside className="flex flex-col border-r border-neutral-200 bg-white">
           <div className="border-b border-neutral-200 px-4 py-3">
             <div className="font-mono text-[11px] uppercase tracking-wider text-neutral-500">
-              Outline · {session.slides.length} slides · {session.solutions.length} solutions
+              Outline · {pluralize(session.slides.length, "slide")} ·{" "}
+              {pluralize(session.solutions.length, "solution")}
             </div>
           </div>
           <ul className="flex-1 overflow-auto p-3">

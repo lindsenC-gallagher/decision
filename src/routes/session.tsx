@@ -11,6 +11,8 @@ export function SessionRoute() {
   const { slug } = useParams({ from: "/sessions/$slug" });
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  // FR-sync-9: 2-second "synced from disk" toast after an external clean sync.
+  const [syncedToast, setSyncedToast] = useState(false);
   const session = useDecisionStore((s) => s.session);
   const baseHash = useDecisionStore((s) => s.baseHash);
   const dirty = useDecisionStore((s) => s.dirty);
@@ -18,6 +20,7 @@ export function SessionRoute() {
   const clear = useDecisionStore((s) => s.clear);
   const markSaved = useDecisionStore((s) => s.markSaved);
   const saveTimer = useRef<number | null>(null);
+  const toastTimer = useRef<number | null>(null);
 
   // Initial load
   useEffect(() => {
@@ -55,6 +58,9 @@ export function SessionRoute() {
             state.setExternalPending(parsed, r.contentHash);
           } else {
             load(r.slug, parsed, r.contentHash);
+            setSyncedToast(true);
+            if (toastTimer.current) window.clearTimeout(toastTimer.current);
+            toastTimer.current = window.setTimeout(() => setSyncedToast(false), 2000);
           }
         })
         .catch(() => {});
@@ -108,5 +114,17 @@ export function SessionRoute() {
     );
   }
 
-  return <AppShell />;
+  return (
+    <>
+      <AppShell />
+      {syncedToast && (
+        <div
+          role="status"
+          className="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-neutral-900 px-3 py-1.5 text-xs text-white shadow-lg"
+        >
+          synced from disk
+        </div>
+      )}
+    </>
+  );
 }

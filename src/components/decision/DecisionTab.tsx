@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, pluralize } from "@/lib/utils";
 import {
   useDecisionStore,
   getScore,
@@ -75,6 +75,12 @@ export function DecisionTab() {
         <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">
           <span className="font-medium">Recommendation:</span> {nameOf(rec.id)} ({rec.score}/
           {rec.maxScore})
+        </div>
+      )}
+      {rec?.kind === "none" && session.solutions.length > 0 && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-900">
+          <span className="font-medium">All solutions eliminated.</span> No candidate passed every
+          Required criterion — revisit the scores or relax a Required to Preferred.
         </div>
       )}
       {rec?.kind === "tie" && (
@@ -162,7 +168,21 @@ export function DecisionTab() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button
-                      onClick={() => removeCriterion(c.id)}
+                      onClick={() => {
+                        // FR-dec-5: confirm when removing a criterion that has
+                        // scores attached, since the orphan ScoreCells are
+                        // dropped with it.
+                        const hasScores = session.scores.some((sc) => sc.criterionId === c.id);
+                        if (
+                          hasScores &&
+                          !window.confirm(
+                            `Remove criterion "${c.name}"? Scores recorded against it will be discarded.`
+                          )
+                        ) {
+                          return;
+                        }
+                        removeCriterion(c.id);
+                      }}
                       className="text-neutral-400 hover:text-neutral-900"
                       title="Remove criterion"
                     >
@@ -180,7 +200,8 @@ export function DecisionTab() {
       <section className="mb-6 rounded-lg border border-neutral-200 bg-white">
         <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-2">
           <h2 className="font-mono text-xs uppercase tracking-wider text-neutral-500">
-            Scoring · {sortedCriteria.length} criteria × {session.solutions.length} solutions
+            Scoring · {pluralize(sortedCriteria.length, "criterion", "criteria")} ×{" "}
+            {pluralize(session.solutions.length, "solution")}
           </h2>
           <div className="flex items-center gap-2">
             <button

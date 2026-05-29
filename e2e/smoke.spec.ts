@@ -113,7 +113,7 @@ test.describe("decision app", () => {
     await secondItem.hover();
     await secondItem.getByRole("button", { name: /Delete slide/i }).click();
 
-    await expect(page.getByText(/Outline · 1 slides/)).toBeVisible();
+    await expect(page.getByText(/Outline · 1 slide\b/)).toBeVisible();
   });
 
   test("Table / Cards layout toggle switches the scoring view", async ({ page }) => {

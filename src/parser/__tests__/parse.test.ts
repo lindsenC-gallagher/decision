@@ -70,6 +70,15 @@ describe("parseSession", () => {
     expect(s.meta.status).toBe("draft");
   });
 
+  it("preserves unquoted ISO 8601 created/updated timestamps from YAML", () => {
+    // gray-matter parses unquoted ISO datetimes as Date objects, not strings.
+    // The parser must coerce them back to ISO strings instead of silently
+    // resetting to `new Date().toISOString()`.
+    const s = parseSession("t", minimal);
+    expect(s.meta.created).toBe("2026-05-15T10:00:00.000Z");
+    expect(s.meta.updated).toBe("2026-05-15T10:00:00.000Z");
+  });
+
   it("extracts slides in order with arbitrary titles", () => {
     const s = parseSession("t", minimal);
     expect(s.slides).toHaveLength(2);

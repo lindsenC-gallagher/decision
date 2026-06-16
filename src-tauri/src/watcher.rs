@@ -8,9 +8,12 @@ use tauri::{AppHandle, Emitter, Manager};
 
 /// A handle to the active watcher; dropping it stops watching.
 pub struct WatcherHandle {
+    // `RecommendedCache` is platform-dependent (FileIdMap on Windows/macOS,
+    // NoCache on Linux) and is exactly what `new_debouncer` returns — naming a
+    // concrete cache type here compiles on one OS and breaks the other.
     _debouncer: notify_debouncer_full::Debouncer<
         notify::RecommendedWatcher,
-        notify_debouncer_full::FileIdMap,
+        notify_debouncer_full::RecommendedCache,
     >,
 }
 

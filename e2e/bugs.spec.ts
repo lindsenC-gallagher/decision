@@ -106,7 +106,9 @@ test.describe("bug: no UI when all solutions are eliminated", () => {
     await headerCells.nth(1).getByRole("button", { name: "×" }).click();
 
     // Banner should now explain no candidates survive.
-    await expect(page.getByText(/all solutions eliminated|no surviving|no candidates/i)).toBeVisible();
+    await expect(
+      page.getByText(/all solutions eliminated|no surviving|no candidates/i)
+    ).toBeVisible();
   });
 });
 

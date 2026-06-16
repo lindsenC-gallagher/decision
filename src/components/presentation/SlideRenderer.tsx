@@ -352,10 +352,7 @@ function SlideBody({
       return (
         <div className="mx-auto max-w-3xl">
           <div className="mb-6">{titleEl}</div>
-          <EditableArea
-            onEdit={onEdit}
-            className="rounded-md p-2 hover:bg-neutral-100"
-          >
+          <EditableArea onEdit={onEdit} className="rounded-md p-2 hover:bg-neutral-100">
             {empty ? (
               <span className="text-neutral-400">Click to add content. Markdown supported.</span>
             ) : (

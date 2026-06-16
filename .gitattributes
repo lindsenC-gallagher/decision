@@ -1,0 +1,11 @@
+# Normalize line endings. Text files are stored as LF in the repository and
+# checked out as LF in the working tree on every platform. This stops the
+# "LF will be replaced by CRLF" churn on Windows and keeps Prettier
+# (endOfLine: "lf") consistent between local runs and CI.
+* text=auto eol=lf
+
+# Binary assets — never normalize or diff as text.
+*.png  binary
+*.ico  binary
+*.icns binary
+*.gz   binary

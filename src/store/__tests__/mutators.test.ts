@@ -159,6 +159,49 @@ describe("solution mutators", () => {
   });
 });
 
+describe("markSaved reconciliation (concurrent-edit safety)", () => {
+  it("adopts the saved snapshot and goes clean when no edits raced the save", () => {
+    const store = useDecisionStore.getState;
+    const source = store().session!;
+    // The snapshot that was serialized to disk — carries an appended history.
+    const savedSnapshot: Session = {
+      ...structuredClone(source),
+      history: [{ timestamp: "2026-05-15T10:05:00Z", message: "Saved" }],
+    };
+    store().markSaved(savedSnapshot, "hash-1", source);
+
+    const s = store();
+    expect(s.dirty).toBe(false);
+    expect(s.baseHash).toBe("hash-1");
+    expect(s.session!.history).toEqual([{ timestamp: "2026-05-15T10:05:00Z", message: "Saved" }]);
+    expect(s.lastSaved!.history).toHaveLength(1);
+  });
+
+  it("keeps newer edits and stays dirty when the user typed during the async save", () => {
+    const store = useDecisionStore.getState;
+    // Snapshot the session the (pretend) save serialized…
+    const source = store().session!;
+    const savedSnapshot: Session = {
+      ...structuredClone(source),
+      history: [{ timestamp: "2026-05-15T10:05:00Z", message: "Saved" }],
+    };
+    // …then the user types while the write is in flight (new session object).
+    store().setDecisionText("typed during save");
+    expect(store().session).not.toBe(source);
+
+    store().markSaved(savedSnapshot, "hash-1", source);
+
+    const s = store();
+    // Newer edit survives — this is the regression guard against "undo".
+    expect(s.session!.decision).toBe("typed during save");
+    // Saved history is carried forward so the next save doesn't drop it.
+    expect(s.session!.history).toEqual([{ timestamp: "2026-05-15T10:05:00Z", message: "Saved" }]);
+    // Concurrency base advances, but we stay dirty to persist the newer edit.
+    expect(s.baseHash).toBe("hash-1");
+    expect(s.dirty).toBe(true);
+  });
+});
+
 describe("score mutator", () => {
   it("setScore adds, updates, or removes (when unknown) a cell", () => {
     useDecisionStore.getState().setScore("C1", "Alpha", "yes");

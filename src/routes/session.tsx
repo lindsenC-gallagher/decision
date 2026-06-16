@@ -14,13 +14,16 @@ export function SessionRoute() {
   // FR-sync-9: 2-second "synced from disk" toast after an external clean sync.
   const [syncedToast, setSyncedToast] = useState(false);
   const session = useDecisionStore((s) => s.session);
-  const baseHash = useDecisionStore((s) => s.baseHash);
   const dirty = useDecisionStore((s) => s.dirty);
   const load = useDecisionStore((s) => s.load);
   const clear = useDecisionStore((s) => s.clear);
   const markSaved = useDecisionStore((s) => s.markSaved);
   const saveTimer = useRef<number | null>(null);
   const toastTimer = useRef<number | null>(null);
+  // Hashes of content this app has written. The Rust watcher echoes our own
+  // saves back as `decisions://changed`; without this ledger a late/duplicate
+  // echo can reload over (or pop a spurious conflict prompt during) live edits.
+  const selfWrites = useRef<Set<string>>(new Set());
 
   // Initial load
   useEffect(() => {
@@ -49,9 +52,13 @@ export function SessionRoute() {
     void startWatching().catch(() => {}); // idempotent
     void onSessionChanged((path) => {
       if (!path.toLowerCase().endsWith(`${slug.toLowerCase()}.md`)) return;
-      const state = useDecisionStore.getState();
       loadSession(slug)
         .then((r) => {
+          const state = useDecisionStore.getState();
+          // Drop echoes of our own writes (and no-op changes that already match
+          // the concurrency base) so live typing isn't interrupted by a
+          // self-inflicted reload or a spurious conflict prompt.
+          if (selfWrites.current.has(r.contentHash) || r.contentHash === state.baseHash) return;
           const parsed = parseSession(r.slug, r.rawMarkdown);
           if (state.dirty) {
             // Hold the incoming version for the user to choose (FR-sync-10).
@@ -74,15 +81,24 @@ export function SessionRoute() {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(async () => {
       try {
-        const lastSaved = useDecisionStore.getState().lastSaved;
-        const toSave = structuredClone(session);
-        if (lastSaved) {
-          const entries = diffSessions(lastSaved, toSave);
+        // Read fresh state at fire time so we snapshot — and reconcile against —
+        // the exact live session object, not a stale render closure.
+        const store = useDecisionStore.getState();
+        const sourceSession = store.session;
+        if (!sourceSession) return;
+        const toSave = structuredClone(sourceSession);
+        if (store.lastSaved) {
+          const entries = diffSessions(store.lastSaved, toSave);
           if (entries.length > 0) toSave.history = [...toSave.history, ...entries];
         }
         const md = serializeSession(toSave);
-        const saved = await saveSession(slug, md, baseHash);
-        markSaved(toSave, saved.contentHash);
+        const saved = await saveSession(slug, md, store.baseHash);
+        // Remember our own write so the watcher echo is ignored (ring-capped).
+        selfWrites.current.add(saved.contentHash);
+        if (selfWrites.current.size > 24) {
+          selfWrites.current.delete(selfWrites.current.values().next().value!);
+        }
+        markSaved(toSave, saved.contentHash, sourceSession);
       } catch (e) {
         setError(String(e));
       }
@@ -93,7 +109,9 @@ export function SessionRoute() {
         saveTimer.current = null;
       }
     };
-  }, [dirty, session, slug, baseHash, markSaved]);
+    // `session` stays a dep so each edit reschedules the 300ms timer; baseHash
+    // is read fresh from the store at fire time, so it's intentionally omitted.
+  }, [dirty, session, slug, markSaved]);
 
   if (error) {
     return (

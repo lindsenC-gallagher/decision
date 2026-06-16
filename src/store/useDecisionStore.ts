@@ -29,7 +29,12 @@ interface DecisionState {
 
   load: (slug: string, session: Session, baseHash: string) => void;
   clear: () => void;
-  markSaved: (newSession: Session, newHash: string) => void;
+  /** Reconcile after a save completes. `savedSnapshot` is the exact session
+   *  that was serialized to disk (carries the appended history); `sourceSession`
+   *  is the live store object it was cloned from. If the live session has since
+   *  changed (the user typed during the async write), the newer edits are kept
+   *  and the store stays dirty — only then does the save not clobber typing. */
+  markSaved: (savedSnapshot: Session, newHash: string, sourceSession: Session) => void;
   toggleReveal: () => void;
   setPresenting: (v: boolean) => void;
 
@@ -120,12 +125,29 @@ export const useDecisionStore = create<DecisionState>((set, get) => {
         presenting: false,
         pendingExternal: null,
       }),
-    markSaved: (newSession, newHash) =>
-      set({
-        session: newSession,
-        lastSaved: structuredClone(newSession),
-        baseHash: newHash,
-        dirty: false,
+    markSaved: (savedSnapshot, newHash, sourceSession) =>
+      set((s) => {
+        if (!s.session) return {};
+        // No edits landed during the async write: adopt the saved snapshot
+        // (it carries the freshly appended history) and go clean.
+        if (s.session === sourceSession) {
+          return {
+            session: savedSnapshot,
+            lastSaved: structuredClone(savedSnapshot),
+            baseHash: newHash,
+            dirty: false,
+          };
+        }
+        // The user kept typing while the save was in flight. Keep their newer
+        // session — only carry the saved history forward and advance the
+        // concurrency base — and stay dirty so the next autosave persists the
+        // newer edits. (Replacing s.session here is what used to "undo" typing.)
+        return {
+          session: { ...s.session, history: savedSnapshot.history },
+          lastSaved: structuredClone(savedSnapshot),
+          baseHash: newHash,
+          dirty: true,
+        };
       }),
     toggleReveal: () => set((s) => ({ revealed: !s.revealed })),
     setPresenting: (v) => set({ presenting: v }),

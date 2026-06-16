@@ -451,8 +451,26 @@ export function DecisionTab() {
 
       {/* Decision summary */}
       <section className="mb-6 rounded-lg border border-neutral-200 bg-white p-4">
-        <header className="mb-2">
+        <header className="mb-2 flex items-center justify-between gap-2">
           <h2 className="font-mono text-xs uppercase tracking-wider text-neutral-500">Decision</h2>
+          {/* Chosen-solution pill (FR-dec-16/17). Reflects session.pickedSolution
+              live, but stays hidden behind Reveal so a pre-reveal pick doesn't
+              leak the outcome. */}
+          {revealed ? (
+            session.pickedSolution ? (
+              <span className="rounded-full bg-emerald-600 px-2.5 py-0.5 font-mono text-xs font-medium text-white">
+                ✓ Chosen: {nameOf(session.pickedSolution)}
+              </span>
+            ) : (
+              <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 font-mono text-xs text-neutral-500">
+                no solution chosen
+              </span>
+            )
+          ) : (
+            <span className="font-mono text-xs text-neutral-400">
+              — results hidden — press Reveal to view —
+            </span>
+          )}
         </header>
         <DecisionEditor />
       </section>

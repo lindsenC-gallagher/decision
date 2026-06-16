@@ -48,6 +48,40 @@ test.describe("decision app", () => {
     ).toBeVisible();
   });
 
+  test("picking a solution updates the Decision summary chosen-solution pill (FR-dec-17)", async ({
+    page,
+  }) => {
+    await page.goto("/sessions/framework-choice");
+    await page.locator("header button[aria-selected]").filter({ hasText: "Decision" }).click();
+
+    const decisionSection = page.locator("section", {
+      has: page.getByRole("heading", { name: "Decision", exact: true }),
+    });
+
+    // Before reveal: the pill is suppressed in favour of the hidden message.
+    await expect(decisionSection.getByText("results hidden", { exact: false })).toBeVisible();
+
+    // Reveal, then with nothing picked the pill reads "no solution chosen".
+    await page.getByRole("button", { name: "Reveal results" }).click();
+    await expect(decisionSection.getByText("no solution chosen")).toBeVisible();
+
+    // Pick the first (top) solution; the pill updates to name it.
+    const firstPick = page
+      .locator("section", { has: page.getByText(/Scoring ·/) })
+      .getByRole("button", { name: "Pick" })
+      .first();
+    await firstPick.click();
+    await expect(decisionSection.getByText(/✓ Chosen:/)).toBeVisible();
+
+    // Unpick: the pill reverts to "no solution chosen".
+    await page
+      .locator("section", { has: page.getByText(/Scoring ·/) })
+      .getByRole("button", { name: "Picked" })
+      .first()
+      .click();
+    await expect(decisionSection.getByText("no solution chosen")).toBeVisible();
+  });
+
   test("clicking a score cell cycles its value", async ({ page }) => {
     await page.goto("/sessions/framework-choice");
     await page.locator("header button[aria-selected]").filter({ hasText: "Decision" }).click();

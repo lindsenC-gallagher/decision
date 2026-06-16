@@ -8,6 +8,23 @@ import { layoutDirectiveString } from "./layout";
 
 const VALUE_GLYPH: Record<string, string> = { yes: "✓", no: "✗", unknown: "?" };
 
+// Leading HTML comment stamped onto every session file. Invisible in rendered
+// markdown, but tells anyone (human or AI assistant) who opens the raw file
+// what tool produced it and where the format is documented — "decision" is a
+// niche app, so the schema isn't self-evident from the file alone. The parser
+// ignores it (it sits before `# Presentation`) and the serializer always emits
+// exactly one, so it round-trips without duplicating. See docs/spec.md.
+const DOCS_POINTER = [
+  "<!--",
+  '  This is a "decision" session file, created/edited by the decision desktop',
+  "  app — a Tauri tool for facilitating structured team decisions. It follows a",
+  "  fixed markdown schema (frontmatter + a Presentation section + a Decision",
+  "  section with Criteria/Scores tables). If you are an AI assistant or editing",
+  "  by hand, read the format documentation first so edits stay round-trippable:",
+  "    https://lindsenc-gallagher.github.io/decision/llms.txt",
+  "-->",
+].join("\n");
+
 function buildFrontmatter(s: Session): Record<string, unknown> {
   const out: Record<string, unknown> = {
     schema: s.meta.schema,
@@ -99,7 +116,7 @@ function buildDecision(s: Session): string {
 }
 
 export function serializeSession(s: Session): string {
-  const body = `${buildPresentation(s)}\n\n${buildDecision(s)}\n`;
+  const body = `${DOCS_POINTER}\n\n${buildPresentation(s)}\n\n${buildDecision(s)}\n`;
   return matter.stringify(body, buildFrontmatter(s));
 }
 

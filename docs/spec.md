@@ -131,6 +131,11 @@ created: <ISO 8601>
 updated: <ISO 8601>
 ---
 
+<!--
+  This is a "decision" session file… (docs pointer — see §7.1.1)
+  https://lindsenc-gallagher.github.io/decision/llms.txt
+-->
+
 # Presentation
 
 ## Problem
@@ -175,6 +180,12 @@ updated: <ISO 8601>
 - 2026-05-15T14:51:02Z — Added solution: <name>
 ```
 
+### 7.1.1 Docs-pointer comment
+
+Every serialized session file carries a leading HTML comment, emitted by `serializeSession` immediately after the frontmatter and before `# Presentation`. Its purpose is discoverability: `decision` is a niche tool, and a session file opened in isolation (e.g. by an AI assistant editing the folder externally, or a human in a plain editor) gives no hint of its schema or origin. The comment names the tool and links to the published format docs (`https://lindsenc-gallagher.github.io/decision/llms.txt`, served via GitHub Pages per `_config.yml`).
+
+Round-trip behaviour: the comment sits before any recognized section, so the parser never slices it into a section body and silently drops it on parse; the serializer re-emits exactly one on every write. `parse(serialize(s)) ≡ s` (NFR-5) therefore still holds, and the comment never duplicates across save cycles. It is invisible in rendered markdown (GitHub, in-app preview).
+
 ### 7.1.0 Blank template
 
 When the user invokes "+ New decision" (FR-shell-7), the Rust core writes a fresh `.md` file with the following content. The slug and timestamps are filled per-instance; everything else is verbatim.
@@ -188,6 +199,8 @@ status: draft
 created: <ISO 8601 now>
 updated: <ISO 8601 now>
 ---
+
+<!-- docs-pointer comment (§7.1.1) -->
 
 # Presentation
 
@@ -456,6 +469,7 @@ The mermaid source remains the canonical content in the `.md` file — no render
 | FR-sync-11 | If the Rust core panics or the watcher stops, the renderer shows a non-blocking error banner. Local edits remain in memory; the next successful `save_session` flushes them. |
 | FR-sync-12 | The user can change the decisions folder at runtime via `pick_decisions_dir` (native folder dialog). After change, the watcher is restarted against the new folder and the session list is refreshed. |
 | FR-sync-13 | The chosen decisions folder **persists across launches** via `$APPCONFIG/decision/settings.json` (managed by `src-tauri/src/settings.rs`). On startup, the saved path is loaded; falls back to `$HOME/decisions/` if missing. Updated on every successful `set_decisions_dir` call. |
+| FR-sync-14 | Every serialized session file carries a leading HTML docs-pointer comment naming the tool and linking to the published format docs (§7.1.1). It is emitted on every write, ignored by the parser, and never duplicates across round-trips. |
 
 ### 8.5 History / audit log
 

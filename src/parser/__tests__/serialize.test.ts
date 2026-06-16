@@ -93,6 +93,24 @@ describe("serializeSession", () => {
     expect(md).toMatch(/picked:\s*Alpha/);
   });
 
+  it("stamps the docs pointer comment ahead of the body", () => {
+    const md = serializeSession(fixture());
+    expect(md).toContain("decision/llms.txt");
+    // The pointer must sit before the first real section so it never gets
+    // sliced into a section body.
+    const pointerIdx = md.indexOf("<!--");
+    const presIdx = md.indexOf("# Presentation");
+    expect(pointerIdx).toBeGreaterThanOrEqual(0);
+    expect(pointerIdx).toBeLessThan(presIdx);
+  });
+
+  it("emits exactly one docs pointer after a parse/serialize round-trip", () => {
+    const once = serializeSession(fixture());
+    const twice = serializeSession(parseSession("rt", once));
+    const occurrences = twice.split("decision/llms.txt").length - 1;
+    expect(occurrences).toBe(1);
+  });
+
   it("sorts contested criteria last", () => {
     const md = serializeSession(fixture());
     const c1 = md.indexOf("| C1 |");

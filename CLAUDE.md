@@ -109,6 +109,10 @@ Adding a command → declare it in `commands.rs`, register in `lib.rs`'s `invoke
 
 **Rule**: when adding a feature that touches the parser/serializer schema, the store mutators, or any user flow (create session, edit, save, reveal, switch tabs, conflict resolution), add or update a test in the same change. Schema changes especially need a round-trip test entry in `src/parser/__tests__/serialize.test.ts`.
 
+## Git workflow
+
+- **Push directly to `main`.** This is a solo/personal repo — commit and push straight to `main`; no feature branches, no pull requests, no review gate required. Skip the branch-and-PR flow for routine changes.
+
 ## Default data folder
 
 `$HOME/decisions/` on first run. User can pick a different folder via the native dialog (`pick_decisions_dir` command); the choice is held in process memory only — persistent storage of the user's preference is a TODO (will move to `tauri-plugin-store` or `$APPCONFIG/decision/settings.json`).

@@ -127,10 +127,7 @@ test.describe("decision app", () => {
 
     // Click the Present button → chrome hides, outline gone, Esc-pill appears.
     // Exact name "Present F" — `/Present/` also matches the "Presentation" tab.
-    await page
-      .locator("header")
-      .getByRole("button", { name: "Present F" })
-      .click();
+    await page.locator("header").getByRole("button", { name: "Present F" }).click();
     await expect(page.getByText(/Outline · \d+ slides/)).toBeHidden();
     await expect(page.getByRole("button", { name: /Esc to exit/i })).toBeVisible();
 

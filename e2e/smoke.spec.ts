@@ -24,14 +24,14 @@ test.describe("decision app", () => {
     await expect(page.getByText("We need to pick a frontend stack.")).toBeVisible();
 
     // Switch to Decision tab via the kbd-tagged button.
-    await page.locator("nav button[aria-selected]").filter({ hasText: "Decision" }).click();
+    await page.locator("header button[aria-selected]").filter({ hasText: "Decision" }).click();
     await expect(page.getByText(/Criteria · 2/i)).toBeVisible();
     await expect(page.getByText(/Scoring · 2 criteria/)).toBeVisible();
   });
 
   test("Reveal results toggles scores + recommendation banner", async ({ page }) => {
     await page.goto("/sessions/framework-choice");
-    await page.locator("nav button[aria-selected]").filter({ hasText: "Decision" }).click();
+    await page.locator("header button[aria-selected]").filter({ hasText: "Decision" }).click();
 
     // Before reveal: no Recommendation banner; Score footer row not in the matrix.
     await expect(page.getByText("Recommendation:")).toBeHidden();
@@ -50,7 +50,7 @@ test.describe("decision app", () => {
 
   test("clicking a score cell cycles its value", async ({ page }) => {
     await page.goto("/sessions/framework-choice");
-    await page.locator("nav button[aria-selected]").filter({ hasText: "Decision" }).click();
+    await page.locator("header button[aria-selected]").filter({ hasText: "Decision" }).click();
 
     // The very first cell of the very first criterion row.
     // Target the scoring-matrix table specifically; the criteria-editor table is first.
@@ -85,10 +85,10 @@ test.describe("decision app", () => {
   test("F enters present mode and Esc exits", async ({ page }) => {
     await page.goto("/sessions/framework-choice");
     // Wait for the slide to render before sending keys.
-    await expect(page.locator("header").getByRole("button", { name: /Present/ })).toBeVisible();
+    await expect(page.locator("header").getByRole("button", { name: "Present F" })).toBeVisible();
 
     // Tabs and outline visible by default.
-    await expect(page.locator("nav button[aria-selected]").first()).toBeVisible();
+    await expect(page.locator("header button[aria-selected]").first()).toBeVisible();
     await expect(page.getByText(/Outline · \d+ slides/)).toBeVisible();
 
     // Click the Present button → chrome hides, outline gone, Esc-pill appears.
@@ -118,7 +118,7 @@ test.describe("decision app", () => {
 
   test("Table / Cards layout toggle switches the scoring view", async ({ page }) => {
     await page.goto("/sessions/framework-choice");
-    await page.locator("nav button[aria-selected]").filter({ hasText: "Decision" }).click();
+    await page.locator("header button[aria-selected]").filter({ hasText: "Decision" }).click();
 
     // Default is Table — a <table> is present.
     await expect(page.locator("section table").first()).toBeVisible();
@@ -133,7 +133,7 @@ test.describe("decision app", () => {
 
   test("conflict banner appears when an external change arrives while dirty", async ({ page }) => {
     await page.goto("/sessions/framework-choice");
-    await page.locator("nav button[aria-selected]").filter({ hasText: "Decision" }).click();
+    await page.locator("header button[aria-selected]").filter({ hasText: "Decision" }).click();
 
     // Dirty the local state by cycling a score cell.
     // Target the scoring-matrix table specifically; the criteria-editor table is first.

@@ -451,6 +451,7 @@ The mermaid source remains the canonical content in the `.md` file — no render
 | FR-pres-16 | The outline footer has `+ Slide` and `+ Solution` actions. New slides default to title `Slide N` and empty body; new solutions default to name `Solution <A/B/C…>`. |
 | FR-pres-17 | Slide content is **auto-scaled** to fit the available area without scrolling. Base font sizes are presentation-large; the renderer applies CSS `zoom` to scale down busy slides or scale up sparse ones. Scale clamps to `[0.35, 1.4]`. Implemented in `src/components/presentation/ScaledSlide.tsx`. The textarea (edit mode) is not scaled and remains scrollable. |
 | FR-pres-18 | The app-shell header includes a **"Present"** button (with `F` keyboard hint) that triggers the same in-app present mode as the `F` shortcut. |
+| FR-pres-19 | The slide-body markdown editor holds a local draft of its text while focused and only re-syncs from the canonical body when not focused (slide switch, external file edit, initial mount). This guarantees the text the user types is preserved verbatim — including trailing blank lines — even on Solution slides, where the canonical body is re-derived through a Pros/Cons split→combine round-trip that trims whitespace. The trimmed/canonical form takes over again on blur. |
 
 ### 8.4 Persistence and sync
 

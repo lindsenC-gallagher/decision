@@ -125,9 +125,17 @@ export function SlideRenderer({
 /**
  * Edit-mode textarea. Owns its own ref so focus is set imperatively on mount
  * (more reliable than the `autoFocus` attribute, which has lost focus races
- * inside Tauri's WebView2 webview), and stops keydown propagation so no
- * window-level handler (tab switch, fullscreen, slide nav) can interfere
- * with characters that happen to be typed via Shift/AltGr combos.
+ * inside Tauri's WebView2 webview).
+ *
+ * It also keeps a local draft of the text and only re-syncs from the incoming
+ * `body` prop while it is NOT focused. This matters because for solution slides
+ * the parent re-derives `body` through a pros/cons split→combine round-trip
+ * (`combineProsCons`/`splitProsCons`) that `.trim()`s the text. If the textarea
+ * were strictly controlled by that derived value, pressing Enter at the end of
+ * the body would be undone instantly — the trailing newline gets trimmed and
+ * the value snaps back, so new lines could never be typed. Holding a local
+ * draft while focused lets the user type freely; the canonical (trimmed) value
+ * takes over again on blur.
  */
 function EditorTextarea({
   body,
@@ -139,6 +147,16 @@ function EditorTextarea({
   onBlur: () => void;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const focused = useRef(false);
+  const [draft, setDraft] = useState(body);
+
+  // Re-sync the draft from the canonical body only when the user isn't actively
+  // typing (slide switch, external file edit, initial mount). While focused we
+  // never overwrite the draft — see the round-trip note above.
+  useEffect(() => {
+    if (!focused.current) setDraft(body);
+  }, [body]);
+
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -150,9 +168,18 @@ function EditorTextarea({
   return (
     <textarea
       ref={ref}
-      value={body}
-      onChange={(e) => onBodyChange(e.target.value)}
-      onBlur={onBlur}
+      value={draft}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onChange={(e) => {
+        setDraft(e.target.value);
+        onBodyChange(e.target.value);
+      }}
+      onBlur={() => {
+        focused.current = false;
+        onBlur();
+      }}
       className="min-h-[400px] w-full rounded-md border border-neutral-300 bg-white p-4 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-neutral-900"
       spellCheck={false}
       placeholder="Markdown supported. Use ![alt](path) for images, fenced code blocks with language tags, and ```mermaid for diagrams."

@@ -137,6 +137,34 @@ test.describe("bug: missing 'synced from disk' toast on external clean edit", ()
   });
 });
 
+test.describe("bug: cannot type a newline at the end of a solution slide body", () => {
+  test("pressing Enter at the end of a solution editor keeps the new line", async ({ page }) => {
+    await page.goto("/sessions/framework-choice");
+
+    // Deck order: Problem (01), Background (02), React + Vite (03), SvelteKit (04).
+    // Jump to the React + Vite solution (which has Pros/Cons, so editing it goes
+    // through the combineProsCons/splitProsCons round-trip).
+    await page.locator("aside ul li").nth(2).getByRole("button").first().click();
+
+    // Click the slide body to enter edit mode, then focus the markdown textarea.
+    const body = page.locator("section [role='button']").first();
+    await body.click();
+    const editor = page.getByPlaceholder(/Markdown supported/i);
+    await expect(editor).toBeVisible();
+    await editor.click();
+
+    // Move to the very end and press Enter twice, then type new text. Before the
+    // fix the trailing newlines were trimmed away on every keystroke, so the
+    // new paragraph could never be started.
+    await page.keyboard.press("Control+End");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("A brand new paragraph.");
+
+    await expect(editor).toHaveValue(/\n\nA brand new paragraph\.$/);
+  });
+});
+
 test.describe("bug: slide body wraps a <button> around the markdown (invalid HTML)", () => {
   test("clicking a Copy button inside a code block does NOT enter slide edit mode", async ({
     page,
